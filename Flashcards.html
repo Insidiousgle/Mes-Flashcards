@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feuillets — flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FBF7FF;
+  --surface:#FFFFFF;
+  --ink:#2A2340;
+  --ink-soft:#8A82A8;
+  --border:#E7DFFB;
+  --brand:#7C5CFF;
+  --brand-dark:#5E3FE0;
+  --yellow:#FFC145;
+  --pink:#FF6B9D;
+  --green:#3EC28F;
+  --red:#FF6B6B;
+  --radius:16px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:var(--bg);
+  background-image:
+    radial-gradient(circle at 92% 8%, rgba(255,193,69,0.18) 0, transparent 40%),
+    radial-gradient(circle at 4% 85%, rgba(124,92,255,0.14) 0, transparent 40%);
+  color:var(--ink);
+  font-family:'Nunito',sans-serif;
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.app{display:flex;min-height:100vh;}
+h1,h2,.brand,.flashcard-text,.dash-card .name,.deck-header h1{font-family:'Fredoka',sans-serif;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:260px;flex-shrink:0;background:var(--surface);
+  border-right:3px solid var(--ink);
+  padding:26px 18px;display:flex;flex-direction:column;
+}
+.brand{font-size:23px;font-weight:700;margin:0 0 2px 0;display:flex;align-items:center;gap:8px;}
+.brand-sub{font-size:12.5px;color:var(--ink-soft);margin:0 0 26px 0;font-weight:600;}
+.nav-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 12px;border-radius:12px;cursor:pointer;font-size:14.5px;font-weight:700;
+  margin-bottom:4px;border:2px solid transparent;color:var(--ink);
+}
+.nav-item:hover{background:#F5F1FF;}
+.nav-item.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.nav-item .count{
+  font-size:11.5px;background:var(--surface);color:var(--ink);
+  border:2px solid var(--ink);border-radius:20px;padding:1px 8px;font-weight:800;
+}
+.nav-item.active .count{background:#fff;color:var(--ink);}
+.deck-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:9px;flex-shrink:0;border:2px solid var(--ink);}
+.deck-name-wrap{display:flex;align-items:center;overflow:hidden;}
+.deck-name-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.due-badge{
+  font-size:10px;background:var(--red);color:#fff;border-radius:20px;padding:1px 6px;margin-left:6px;font-weight:800;
+}
+.decks-label{font-size:11.5px;color:var(--ink-soft);margin:20px 0 8px 10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+.deck-list{flex:1;overflow-y:auto;}
+.new-deck-form{margin-top:8px;padding:0 4px;}
+.new-deck-form input{
+  width:100%;border:2px solid var(--ink);background:var(--surface);
+  border-radius:12px;padding:9px 11px;font-size:13.5px;font-family:'Nunito',sans-serif;font-weight:700;
+  margin-bottom:8px;
+}
+.new-deck-form input::placeholder{color:var(--ink-soft);font-weight:600;}
+.sidebar-footer{margin-top:auto;padding-top:16px;border-top:2px dashed var(--border);}
+.ghost-btn{
+  width:100%;background:none;border:2px dashed var(--border);color:var(--ink-soft);
+  border-radius:12px;padding:9px;font-size:12.5px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;
+}
+.ghost-btn:hover{border-color:var(--brand);color:var(--brand);}
+
+/* ---------- Buttons (chunky sticker style) ---------- */
+.btn{
+  font-family:'Nunito',sans-serif;font-weight:800;font-size:13.5px;
+  padding:10px 18px;border-radius:999px;border:2.5px solid var(--ink);
+  background:var(--brand);color:#fff;cursor:pointer;
+  box-shadow:3px 3px 0 var(--ink);
+  transition:transform .08s ease, box-shadow .08s ease;
+}
+.btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink);}
+.btn:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+.btn.secondary{background:var(--surface);color:var(--ink);}
+.btn.danger{background:var(--red);}
+.btn:disabled{opacity:.4;cursor:default;box-shadow:2px 2px 0 var(--ink);}
+
+/* ---------- Main ---------- */
+.main{flex:1;padding:40px 48px;max-width:920px;}
+h1{font-weight:600;font-size:32px;margin:0 0 4px 0;}
+.subtitle{color:var(--ink-soft);font-size:14.5px;margin:0 0 30px 0;font-weight:700;}
+
+/* dashboard */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;margin-top:6px;}
+.dash-card{
+  background:var(--surface);border:2.5px solid var(--ink);border-radius:20px;
+  padding:0;cursor:pointer;overflow:hidden;
+  box-shadow:4px 4px 0 var(--ink);
+  transition:transform .1s ease, box-shadow .1s ease;
+}
+.dash-card:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);}
+.dash-card .color-bar{height:54px;display:flex;align-items:center;justify-content:center;font-size:26px;}
+.dash-card .body{padding:14px 16px 16px;}
+.dash-card .name{font-size:18px;margin-bottom:8px;font-weight:600;}
+.dash-card .stats{display:flex;gap:12px;font-size:12.5px;color:var(--ink-soft);font-weight:800;}
+.dash-card .stats b{color:var(--ink);}
+.empty-state{
+  border:2.5px dashed var(--border);border-radius:20px;padding:50px 30px;
+  text-align:center;color:var(--ink-soft);margin-top:20px;font-weight:700;font-size:15px;
+}
+
+/* deck view */
+.deck-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;gap:12px;flex-wrap:wrap;}
+.deck-title-row{display:flex;align-items:center;gap:12px;}
+.deck-emoji-badge{
+  width:46px;height:46px;border-radius:14px;border:2.5px solid var(--ink);
+  display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;
+}
+.deck-actions{display:flex;gap:8px;}
+.card-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:13px 16px;border:2px solid var(--border);border-radius:14px;
+  background:var(--surface);margin-bottom:9px;
+}
+.card-row:hover{border-color:var(--ink);}
+.card-row .front-text{font-size:14px;max-width:68%;font-weight:700;}
+.card-row .meta{font-size:11.5px;color:var(--ink-soft);font-weight:700;}
+.tag{
+  display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;
+  background:#F0EAFF;color:var(--brand-dark);margin-right:8px;border:1.5px solid var(--brand);
+}
+
+/* forms */
+.panel{background:var(--surface);border:2.5px solid var(--ink);border-radius:20px;padding:22px;margin-bottom:22px;box-shadow:4px 4px 0 var(--ink);}
+.field-label{font-size:12.5px;color:var(--ink-soft);margin-bottom:6px;display:block;font-weight:800;}
+textarea,input[type=text]{
+  width:100%;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;
+  border:2px solid var(--border);border-radius:12px;
+  padding:10px 12px;background:#FDFCFF;resize:vertical;
+}
+textarea:focus,input:focus{outline:none;border-color:var(--brand);}
+textarea{min-height:72px;}
+.type-toggle{display:flex;gap:8px;margin-bottom:18px;}
+.type-toggle button{
+  flex:1;padding:9px;border-radius:12px;border:2px solid var(--border);
+  background:#FDFCFF;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;color:var(--ink-soft);
+}
+.type-toggle button.active{border-color:var(--brand);color:var(--brand-dark);background:#F0EAFF;}
+.form-row{margin-bottom:16px;}
+.hint{font-size:12px;color:var(--ink-soft);margin-top:6px;font-weight:700;}
+
+/* study */
+.study-wrap{display:flex;flex-direction:column;align-items:center;padding-top:14px;}
+.study-progress{font-size:13.5px;color:var(--ink-soft);margin-bottom:20px;font-weight:800;}
+.flip-scene{width:100%;max-width:600px;perspective:1400px;}
+.flip-card{
+  width:100%;min-height:280px;position:relative;cursor:pointer;
+}
+.flip-inner{
+  position:relative;width:100%;min-height:280px;transition:transform .5s cubic-bezier(.4,.2,.2,1);
+  transform-style:preserve-3d;
+}
+.flip-inner.flipped{transform:rotateY(180deg);}
+.flip-face{
+  position:absolute;inset:0;backface-visibility:hidden;
+  background:var(--surface);border:3px solid var(--ink);border-radius:22px;
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:40px;
+  box-shadow:6px 6px 0 var(--ink);
+}
+.flip-face.back{transform:rotateY(180deg);background:#F5F1FF;}
+.flip-face .label{position:absolute;top:16px;left:20px;font-size:11px;color:var(--ink-soft);font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+.flashcard-text{font-size:24px;line-height:1.5;font-weight:500;}
+.flashcard-text .blank{display:inline-block;border-bottom:3px solid var(--yellow);min-width:60px;}
+.flashcard-text .revealed{color:var(--brand-dark);font-weight:600;}
+.flip-hint{font-size:12.5px;color:var(--ink-soft);margin-top:16px;font-weight:700;}
+.grade-row{display:flex;gap:10px;margin-top:24px;width:100%;max-width:600px;}
+.grade-btn{
+  flex:1;padding:13px 6px;border-radius:16px;border:2.5px solid var(--ink);
+  background:var(--surface);font-family:'Nunito',sans-serif;cursor:pointer;text-align:center;
+  box-shadow:3px 3px 0 var(--ink);transition:transform .08s ease, box-shadow .08s ease;
+}
+.grade-btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink);}
+.grade-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+.grade-btn .lbl{display:block;font-size:13.5px;font-weight:800;}
+.grade-btn .sub{display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;font-weight:700;}
+.grade-btn.again{background:#FFECEC;}
+.grade-btn.hard{background:#FFF6E0;}
+.grade-btn.good{background:#E9FFF3;}
+.grade-btn.easy{background:#EFEAFF;}
+.done-state{text-align:center;padding:70px 20px;}
+.done-state .big{font-size:28px;margin-bottom:8px;font-weight:600;}
+.done-emoji{font-size:52px;margin-bottom:14px;}
+
+.back-link{font-size:13px;color:var(--ink-soft);cursor:pointer;margin-bottom:16px;display:inline-block;font-weight:700;}
+.back-link:hover{color:var(--brand-dark);}
+.toast{
+  position:fixed;bottom:26px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;
+  font-size:13px;font-weight:800;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+  border:2px solid var(--ink);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+.icon-x{cursor:pointer;color:var(--ink-soft);font-size:15px;font-weight:800;}
+.icon-x:hover{color:var(--red);}
+
+.confetti-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50;}
+.confetti-piece{position:absolute;font-size:20px;animation:confetti-fall 1.1s ease-out forwards;}
+@keyframes confetti-fall{
+  0%{opacity:1;transform:translateY(0) rotate(0deg);}
+  100%{opacity:0;transform:translateY(140px) rotate(320deg);}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+<div class="confetti-layer" id="confetti"></div>
+<input type="file" id="importFile" accept="application/json" style="display:none">
+
+<script>
+const STORAGE_KEY = 'feuillets-data';
+let state = { decks: [], cards: [] };
+let view = { page: 'dashboard', deckId: null, studyQueue: [], studyIndex: 0, revealed: false, cardType: 'basic' };
+
+const DECK_COLORS = ['#FF6B9D','#FFC145','#3EC28F','#7C5CFF','#5B9BD5','#FF9F5A','#6BCB77','#FF6B6B'];
+const DECK_EMOJIS = ['📚','🧠','🌿','⚡','🍎','🔬','✨','🧬','🌊','🔥','🎯','🌱'];
+const CELEBRATIONS = ['Nickel !','Tu assures !','Bien joué !','En pleine forme !','Ça rentre !'];
+
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function todayISO(){ return new Date().toISOString(); }
+function daysFromNow(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString(); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+async function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ state = JSON.parse(raw); }
+  }catch(e){}
+  render();
+}
+async function saveData(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ showToast("Oups, la sauvegarde a échoué"); }
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1700);
+}
+function burstConfetti(x, y){
+  const layer = document.getElementById('confetti');
+  const bits = ['✨','🎉','⭐','💫','🌟'];
+  for(let i=0;i<10;i++){
+    const s = document.createElement('span');
+    s.className='confetti-piece';
+    s.textContent = pick(bits);
+    s.style.left = (x + (Math.random()*160-80)) + 'px';
+    s.style.top = (y + (Math.random()*20-10)) + 'px';
+    s.style.animationDelay = (Math.random()*0.15)+'s';
+    layer.appendChild(s);
+    setTimeout(()=>s.remove(), 1300);
+  }
+}
+
+function cardsForDeck(deckId){ return state.cards.filter(c=>c.deckId===deckId); }
+function dueCards(deckId){
+  const now = new Date();
+  return cardsForDeck(deckId).filter(c => !c.dueDate || new Date(c.dueDate) <= now);
+}
+function totalDue(){
+  const now = new Date();
+  return state.cards.filter(c => !c.dueDate || new Date(c.dueDate) <= now).length;
+}
+
+function parseCloze(text){
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let front = esc(text).replace(/\{\{(.*?)\}\}/g, '<span class="blank">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>');
+  let back = esc(text).replace(/\{\{(.*?)\}\}/g, '<span class="revealed">$1</span>');
+  return {front, back};
+}
+function stripCloze(text){ return text.replace(/\{\{(.*?)\}\}/g,'$1'); }
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------- Rendering ---------- */
+function render(){
+  const app = document.getElementById('app');
+  const due = totalDue();
+  app.innerHTML = `
+    <div class="sidebar">
+      <div>
+        <p class="brand">📇 Feuillets</p>
+        <p class="brand-sub">tes cartes, ton rythme</p>
+      </div>
+      <div class="nav-item ${view.page==='dashboard'?'active':''}" onclick="goTo('dashboard')">
+        <span>🏠 Tous les paquets</span>
+        <span class="count">${state.decks.length}</span>
+      </div>
+      <p class="decks-label">Paquets</p>
+      <div class="deck-list">
+        ${state.decks.map(d => {
+          const dueN = dueCards(d.id).length;
+          return `<div class="nav-item ${view.page==='deck'&&view.deckId===d.id?'active':''}" onclick="openDeck('${d.id}')">
+            <span class="deck-name-wrap"><span class="deck-dot" style="background:${d.color}"></span><span class="deck-name-txt">${escapeHtml(d.emoji)} ${escapeHtml(d.name)}</span></span>
+            <span class="count">${cardsForDeck(d.id).length}${dueN>0?`<span class="due-badge">${dueN}</span>`:''}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="new-deck-form">
+        <input type="text" id="newDeckName" placeholder="Nom du paquet (ex : Chapitre 3)" onkeydown="if(event.key==='Enter')createDeck()">
+        <button class="btn secondary" style="width:100%" onclick="createDeck()">+ Nouveau paquet</button>
+      </div>
+      <div class="sidebar-footer">
+        <button class="ghost-btn" onclick="exportData()">⬇️ Exporter en JSON</button>
+        <button class="ghost-btn" style="margin-top:6px" onclick="document.getElementById('importFile').click()">⬆️ Importer un JSON</button>
+      </div>
+    </div>
+    <div class="main">${renderPage()}</div>
+  `;
+}
+
+function renderPage(){
+  if(view.page==='dashboard') return renderDashboard();
+  if(view.page==='deck') return renderDeckView();
+  if(view.page==='study') return renderStudy();
+  return '';
+}
+
+function renderDashboard(){
+  if(state.decks.length===0){
+    return `<h1>Salut ! 👋</h1><p class="subtitle">Crée ton premier paquet dans la barre de gauche — un par chapitre, par exemple.</p>
+    <div class="empty-state">🗂️ Aucun paquet pour l'instant. C'est le moment d'en lancer un !</div>`;
+  }
+  const due = totalDue();
+  return `<h1>Tous les paquets</h1><p class="subtitle">${state.cards.length} carte${state.cards.length!==1?'s':''} au total ${due>0?`· <span style="color:var(--red)">${due} à revoir aujourd'hui 🔥</span>`:'· tout est à jour ✅'}</p>
+  <div class="dash-grid">
+    ${state.decks.map(d=>{
+      const total = cardsForDeck(d.id).length;
+      const dueN = dueCards(d.id).length;
+      return `<div class="dash-card" onclick="openDeck('${d.id}')">
+        <div class="color-bar" style="background:${d.color}22">${d.emoji}</div>
+        <div class="body">
+          <div class="name">${escapeHtml(d.name)}</div>
+          <div class="stats"><span><b>${total}</b> cartes</span><span><b>${dueN}</b> à revoir</span></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderDeckView(){
+  const deck = state.decks.find(d=>d.id===view.deckId);
+  if(!deck) return renderDashboard();
+  const cards = cardsForDeck(deck.id);
+  const due = dueCards(deck.id).length;
+  return `
+  <span class="back-link" onclick="goTo('dashboard')">← Tous les paquets</span>
+  <div class="deck-header">
+    <div class="deck-title-row">
+      <div class="deck-emoji-badge" style="background:${deck.color}33">${deck.emoji}</div>
+      <div>
+        <h1 style="margin-bottom:2px">${escapeHtml(deck.name)}</h1>
+        <p class="subtitle" style="margin-bottom:0">${cards.length} carte${cards.length!==1?'s':''} · ${due} à revoir aujourd'hui</p>
+      </div>
+    </div>
+    <div class="deck-actions">
+      <button class="btn secondary" onclick="deleteDeck('${deck.id}')">Supprimer</button>
+      <button class="btn" onclick="startStudy('${deck.id}')" ${due===0?'disabled':''}>🔁 Réviser (${due})</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="type-toggle">
+      <button class="${view.cardType==='basic'?'active':''}" onclick="setCardType('basic')">💬 Question / Réponse</button>
+      <button class="${view.cardType==='cloze'?'active':''}" onclick="setCardType('cloze')">🕳️ Texte à trous</button>
+    </div>
+    ${view.cardType==='basic' ? `
+      <div class="form-row"><span class="field-label">Recto (question)</span><textarea id="fFront" placeholder="Ex : Quel est le rôle du magnésium dans le stress ?"></textarea></div>
+      <div class="form-row"><span class="field-label">Verso (réponse)</span><textarea id="fBack" placeholder="Ex : Cofacteur de l'axe hypothalamo-hypophyso-surrénalien, sa carence amplifie la réponse au stress."></textarea></div>
+    ` : `
+      <div class="form-row">
+        <span class="field-label">Texte, avec les éléments à cacher entre double accolades</span>
+        <textarea id="fCloze" placeholder="Ex : Le {{magnésium}} est impliqué dans plus de {{300}} réactions enzymatiques."></textarea>
+        <p class="hint">Entoure chaque élément à retenir avec {{ }} — plusieurs trous possibles dans une même carte.</p>
+      </div>
+    `}
+    <button class="btn" onclick="addCard('${deck.id}')">+ Ajouter la carte</button>
+  </div>
+
+  ${cards.length===0 ? `<div class="empty-state">🌱 Pas encore de carte ici. Ajoute la première juste au-dessus !</div>` :
+    cards.map(c=>`
+      <div class="card-row">
+        <div>
+          <span class="tag">${c.type==='cloze'?'trous':'Q/R'}</span>
+          <span class="front-text">${escapeHtml(c.type==='cloze' ? stripCloze(c.text) : c.front)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <span class="meta">${c.reps>0 ? 'revue '+c.reps+' fois' : '🆕 nouvelle'}</span>
+          <span class="icon-x" onclick="deleteCard('${c.id}')">✕</span>
+        </div>
+      </div>
+    `).join('')
+  }
+  `;
+}
+
+function renderStudy(){
+  const queue = view.studyQueue;
+  if(view.studyIndex >= queue.length){
+    return `<div class="done-state">
+      <div class="done-emoji">🎉</div>
+      <div class="big">Terminé pour aujourd'hui !</div>
+      <p class="subtitle">Tu as revu ${queue.length} carte${queue.length!==1?'s':''}. Retour demain pour la suite.</p>
+      <button class="btn secondary" onclick="openDeck(view.deckId)">Retour au paquet</button>
+    </div>`;
+  }
+  const card = state.cards.find(c=>c.id===queue[view.studyIndex]);
+  let frontContent, backContent;
+  if(card.type==='cloze'){
+    const {front, back} = parseCloze(card.text);
+    frontContent = front; backContent = back;
+  } else {
+    frontContent = escapeHtml(card.front); backContent = escapeHtml(card.back);
+  }
+  return `
+  <span class="back-link" onclick="stopStudy()">← Arrêter la révision</span>
+  <div class="study-wrap">
+    <p class="study-progress">Carte ${view.studyIndex+1} sur ${queue.length}</p>
+    <div class="flip-scene">
+      <div class="flip-card" onclick="${view.revealed?'':'reveal()'}">
+        <div class="flip-inner ${view.revealed?'flipped':''}">
+          <div class="flip-face front">
+            <span class="label">${card.type==='cloze'?'à compléter':'question'}</span>
+            <div class="flashcard-text">${frontContent}</div>
+          </div>
+          <div class="flip-face back">
+            <span class="label">réponse</span>
+            <div class="flashcard-text">${backContent}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${!view.revealed ? `<p class="flip-hint">👆 Clique sur la carte pour la retourner</p>` : `
+    <div class="grade-row" id="gradeRow">
+      <button class="grade-btn again" onclick="grade('again', event)"><span class="lbl">😵 À revoir</span><span class="sub">demain</span></button>
+      <button class="grade-btn hard" onclick="grade('hard', event)"><span class="lbl">😅 Difficile</span><span class="sub">bientôt</span></button>
+      <button class="grade-btn good" onclick="grade('good', event)"><span class="lbl">🙂 Bien</span><span class="sub">quelques jours</span></button>
+      <button class="grade-btn easy" onclick="grade('easy', event)"><span class="lbl">😎 Facile</span><span class="sub">longtemps</span></button>
+    </div>`}
+  </div>`;
+}
+
+/* ---------- Actions ---------- */
+function goTo(page){ view.page=page; render(); }
+function openDeck(id){ view.page='deck'; view.deckId=id; view.cardType='basic'; render(); }
+function setCardType(t){ view.cardType=t; render(); }
+
+async function createDeck(){
+  const input = document.getElementById('newDeckName');
+  const name = input.value.trim();
+  if(!name) return;
+  const usedColors = state.decks.map(d=>d.color);
+  const color = DECK_COLORS.find(c=>!usedColors.includes(c)) || pick(DECK_COLORS);
+  const emoji = pick(DECK_EMOJIS);
+  state.decks.push({id:uid(), name, color, emoji, createdAt:todayISO()});
+  await saveData();
+  input.value='';
+  render();
+}
+
+async function deleteDeck(id){
+  if(!confirm('Supprimer ce paquet et toutes ses cartes ?')) return;
+  state.decks = state.decks.filter(d=>d.id!==id);
+  state.cards = state.cards.filter(c=>c.deckId!==id);
+  await saveData();
+  goTo('dashboard');
+}
+
+async function addCard(deckId){
+  let card = {id:uid(), deckId, ease:2.5, interval:0, reps:0, dueDate:null};
+  if(view.cardType==='basic'){
+    const front = document.getElementById('fFront').value.trim();
+    const back = document.getElementById('fBack').value.trim();
+    if(!front || !back){ showToast('Remplis les deux champs 🙂'); return; }
+    card.type='basic'; card.front=front; card.back=back;
+  } else {
+    const text = document.getElementById('fCloze').value.trim();
+    if(!text || !text.includes('{{')){ showToast('Ajoute au moins un élément entre {{ }}'); return; }
+    card.type='cloze'; card.text=text;
+  }
+  state.cards.push(card);
+  await saveData();
+  render();
+  showToast('Carte ajoutée ✨');
+}
+
+async function deleteCard(id){
+  state.cards = state.cards.filter(c=>c.id!==id);
+  await saveData();
+  render();
+}
+
+function startStudy(deckId){
+  view.page='study'; view.deckId=deckId;
+  view.studyQueue = dueCards(deckId).map(c=>c.id);
+  view.studyIndex = 0; view.revealed=false;
+  render();
+}
+function stopStudy(){ openDeck(view.deckId); }
+function reveal(){ view.revealed=true; render(); }
+
+async function grade(quality, evt){
+  if(quality==='good' || quality==='easy'){
+    const rect = evt.target.getBoundingClientRect();
+    burstConfetti(rect.left+rect.width/2, rect.top);
+    if(Math.random()<0.35) showToast(pick(CELEBRATIONS));
+  }
+  const card = state.cards.find(c=>c.id===view.studyQueue[view.studyIndex]);
+  applySM2(card, quality);
+  await saveData();
+  view.studyIndex++;
+  view.revealed=false;
+  render();
+}
+
+function applySM2(card, quality){
+  card.reps = (card.reps||0)+1;
+  let ease = card.ease||2.5;
+  let interval = card.interval||0;
+  if(quality==='again'){
+    interval = 1; ease = Math.max(1.3, ease-0.2);
+  } else if(quality==='hard'){
+    interval = Math.max(1, Math.round((interval||1)*1.2)); ease = Math.max(1.3, ease-0.15);
+  } else if(quality==='good'){
+    interval = interval===0 ? 1 : Math.round(interval*ease);
+    interval = Math.max(interval, 1);
+  } else if(quality==='easy'){
+    interval = interval===0 ? 4 : Math.round(interval*ease*1.3);
+    ease = ease+0.15;
+  }
+  card.ease = ease;
+  card.interval = interval;
+  card.dueDate = daysFromNow(interval);
+}
+
+/* ---------- Import / Export ---------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'feuillets-sauvegarde.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Sauvegarde téléchargée ⬇️');
+}
+document.getElementById('importFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const text = await file.text();
+  try{
+    const data = JSON.parse(text);
+    if(!data.decks || !data.cards) throw new Error('format invalide');
+    data.decks.forEach(d=>{ if(!d.color) d.color=pick(DECK_COLORS); if(!d.emoji) d.emoji=pick(DECK_EMOJIS); });
+    state = data;
+    await saveData();
+    goTo('dashboard');
+    showToast('Import réussi ✅');
+  }catch(err){
+    showToast('Fichier invalide');
+  }
+  e.target.value = '';
+});
+
+loadData();
+</script>
+</body>
+</html>
