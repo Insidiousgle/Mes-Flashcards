@@ -6,6 +6,7 @@
 <title>Feuillets — flashcards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#FBF7FF;
@@ -64,13 +65,25 @@ h1,h2,.brand,.flashcard-text,.dash-card .name,.deck-header h1{font-family:'Fredo
   font-size:10px;background:var(--red);color:#fff;border-radius:20px;padding:1px 6px;margin-left:6px;font-weight:800;
 }
 .decks-label{font-size:11.5px;color:var(--ink-soft);margin:20px 0 8px 10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+.subject-group{margin-bottom:4px;}
+.subject-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 10px;cursor:pointer;font-size:12px;font-weight:800;color:var(--ink-soft);
+  text-transform:uppercase;letter-spacing:.03em;
+}
+.subject-header:hover{color:var(--ink);}
+.subject-header .chevron{transition:transform .15s ease;font-size:10px;}
+.subject-header.collapsed .chevron{transform:rotate(-90deg);}
+.subject-header .count{font-size:10.5px;color:var(--ink-soft);font-weight:700;}
+.subject-decks.collapsed{display:none;}
 .deck-list{flex:1;overflow-y:auto;}
 .new-deck-form{margin-top:8px;padding:0 4px;}
-.new-deck-form input{
+.new-deck-form input,.new-deck-form select{
   width:100%;border:2px solid var(--ink);background:var(--surface);
   border-radius:12px;padding:9px 11px;font-size:13.5px;font-family:'Nunito',sans-serif;font-weight:700;
   margin-bottom:8px;
 }
+.new-deck-form input[list]{background:var(--surface);}
 .new-deck-form input::placeholder{color:var(--ink-soft);font-weight:600;}
 .sidebar-footer{margin-top:auto;padding-top:16px;border-top:2px dashed var(--border);}
 .ghost-btn{
@@ -136,6 +149,19 @@ h1{font-weight:600;font-size:32px;margin:0 0 4px 0;}
 .tag{
   display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;
   background:#F0EAFF;color:var(--brand-dark);margin-right:8px;border:1.5px solid var(--brand);
+}
+.tag-chip{
+  display:inline-block;font-size:11.5px;font-weight:800;padding:5px 12px;border-radius:20px;
+  background:var(--surface);color:var(--ink);margin:0 8px 8px 0;border:2px solid var(--border);cursor:pointer;
+}
+.tag-chip:hover{border-color:var(--ink);}
+.tag-chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.tag-chip .n{color:var(--ink-soft);font-weight:700;margin-left:4px;}
+.tag-chip.active .n{color:#cfc7f0;}
+.tag-filter-row{margin-bottom:16px;}
+.deck-badge{
+  font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;margin-right:8px;
+  background:#F0EAFF;color:var(--brand-dark);border:1.5px solid var(--brand);
 }
 
 /* forms */
@@ -217,6 +243,44 @@ textarea{min-height:72px;}
   0%{opacity:1;transform:translateY(0) rotate(0deg);}
   100%{opacity:0;transform:translateY(140px) rotate(320deg);}
 }
+
+/* ---------- Auth screen ---------- */
+.auth-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);
+  background-image:
+    radial-gradient(circle at 92% 8%, rgba(255,193,69,0.18) 0, transparent 40%),
+    radial-gradient(circle at 4% 85%, rgba(124,92,255,0.14) 0, transparent 40%);
+}
+.auth-box{
+  width:100%;max-width:380px;background:var(--surface);border:2.5px solid var(--ink);
+  border-radius:22px;padding:32px;box-shadow:6px 6px 0 var(--ink);
+}
+.auth-box .brand{justify-content:center;margin-bottom:4px;font-size:26px;}
+.auth-box .brand-sub{text-align:center;margin-bottom:26px;}
+.auth-tabs{display:flex;gap:8px;margin-bottom:20px;}
+.auth-tabs button{
+  flex:1;padding:9px;border-radius:12px;border:2px solid var(--border);
+  background:#FDFCFF;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;color:var(--ink-soft);
+}
+.auth-tabs button.active{border-color:var(--brand);color:var(--brand-dark);background:#F0EAFF;}
+.auth-box input{
+  width:100%;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;
+  border:2px solid var(--border);border-radius:12px;
+  padding:11px 13px;background:#FDFCFF;margin-bottom:12px;
+}
+.auth-box input:focus{outline:none;border-color:var(--brand);}
+.auth-box .btn{width:100%;justify-content:center;padding:11px;}
+.auth-error{color:var(--danger,var(--red));font-size:12.5px;font-weight:700;margin-bottom:12px;}
+.auth-hint{font-size:12px;color:var(--ink-soft);margin-top:16px;text-align:center;font-weight:600;}
+.auth-loading{text-align:center;padding:60px 20px;color:var(--ink-soft);font-weight:700;}
+.sync-badge{
+  font-size:11px;color:var(--ink-soft);font-weight:700;display:flex;align-items:center;gap:5px;
+  padding:6px 4px;
+}
+.sync-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--green);}
+.sync-badge.syncing .dot{background:var(--yellow);}
+.sync-badge.error .dot{background:var(--red);}
 </style>
 </head>
 <body>
@@ -226,9 +290,18 @@ textarea{min-height:72px;}
 <input type="file" id="importFile" accept="application/json" style="display:none">
 
 <script>
+/* ==== CONFIGURATION SUPABASE — à remplacer par tes propres clés ==== */
+const SUPABASE_URL = 'https://ikloossdcosfxvssxizz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrbG9vc3NkY29zZnh2c3N4aXp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMzY0MDIsImV4cCI6MjEwMzkxMjQwMn0.BJ5zI7rn8NCZEPg9ez1Q1A1w4VzOgxB_MIgnxAMvB0E';
+/* ==================================================================== */
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const STORAGE_KEY = 'feuillets-data';
 let state = { decks: [], cards: [] };
-let view = { page: 'dashboard', deckId: null, studyQueue: [], studyIndex: 0, revealed: false, cardType: 'basic' };
+let view = { page: 'dashboard', deckId: null, studyQueue: [], studyIndex: 0, revealed: false, cardType: 'basic', activeTag: null, tagViewTag: null, collapsedSubjects: [] };
+let auth = { session: null, mode:'signin', error:'', loading:true };
+let syncStatus = 'idle'; // idle | syncing | error
 
 const DECK_COLORS = ['#FF6B9D','#FFC145','#3EC28F','#7C5CFF','#5B9BD5','#FF9F5A','#6BCB77','#FF6B6B'];
 const DECK_EMOJIS = ['📚','🧠','🌿','⚡','🍎','🔬','✨','🧬','🌊','🔥','🎯','🌱'];
@@ -241,14 +314,34 @@ function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
 async function loadData(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){ state = JSON.parse(raw); }
-  }catch(e){}
-  render();
+    const { data, error } = await supabaseClient
+      .from('app_state')
+      .select('data')
+      .eq('user_id', auth.session.user.id)
+      .maybeSingle();
+    if(error) throw error;
+    if(data && data.data){ state = data.data; }
+    else { state = { decks: [], cards: [] }; }
+  }catch(e){
+    showToast("Impossible de charger tes données");
+    console.error(e);
+  }
+  renderApp();
 }
 async function saveData(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch(e){ showToast("Oups, la sauvegarde a échoué"); }
+  syncStatus = 'syncing'; renderApp();
+  try{
+    const { error } = await supabaseClient
+      .from('app_state')
+      .upsert({ user_id: auth.session.user.id, data: state, updated_at: new Date().toISOString() });
+    if(error) throw error;
+    syncStatus = 'idle';
+  }catch(e){
+    syncStatus = 'error';
+    showToast("Erreur de synchronisation");
+    console.error(e);
+  }
+  renderApp();
 }
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -288,9 +381,102 @@ function parseCloze(text){
 }
 function stripCloze(text){ return text.replace(/\{\{(.*?)\}\}/g,'$1'); }
 function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeAttr(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function allTags(){
+  const map = {};
+  state.cards.forEach(c=>(c.tags||[]).forEach(t=>{ map[t]=(map[t]||0)+1; }));
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+}
+function cardsWithTag(tag){ return state.cards.filter(c=>(c.tags||[]).includes(tag)); }
+function allSubjects(){
+  const set = new Set(state.decks.map(d=>d.subject||'Sans matière'));
+  return Array.from(set).sort((a,b)=>a==='Sans matière'?1:b==='Sans matière'?-1:a.localeCompare(b));
+}
+function decksBySubject(subject){
+  return state.decks.filter(d=>(d.subject||'Sans matière')===subject);
+}
+
+/* ---------- Auth ---------- */
+function render(){
+  const app = document.getElementById('app');
+  if(auth.loading){
+    app.innerHTML = `<div class="auth-screen"><div class="auth-loading">Chargement… 🌿</div></div>`;
+    return;
+  }
+  if(!auth.session){
+    app.innerHTML = renderAuthScreen();
+    return;
+  }
+  renderApp();
+}
+
+function renderAuthScreen(){
+  return `
+  <div class="auth-screen">
+    <div class="auth-box">
+      <p class="brand">📇 Feuillets</p>
+      <p class="brand-sub">tes cartes, sur tous tes appareils</p>
+      <div class="auth-tabs">
+        <button class="${auth.mode==='signin'?'active':''}" onclick="setAuthMode('signin')">Se connecter</button>
+        <button class="${auth.mode==='signup'?'active':''}" onclick="setAuthMode('signup')">Créer un compte</button>
+      </div>
+      ${auth.error ? `<p class="auth-error">${escapeHtml(auth.error)}</p>` : ''}
+      <input type="email" id="authEmail" placeholder="Email" autocomplete="username">
+      <input type="password" id="authPassword" placeholder="Mot de passe" autocomplete="${auth.mode==='signin'?'current-password':'new-password'}" onkeydown="if(event.key==='Enter')submitAuth()">
+      <button class="btn" onclick="submitAuth()">${auth.mode==='signin'?'Se connecter':'Créer mon compte'}</button>
+      <p class="auth-hint">${auth.mode==='signin' ? "Pas encore de compte ? Clique sur \"Créer un compte\" ci-dessus." : "Utilise le même email/mot de passe sur ton autre appareil pour retrouver tes cartes."}</p>
+    </div>
+  </div>`;
+}
+
+function setAuthMode(mode){ auth.mode = mode; auth.error=''; render(); }
+
+async function submitAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if(!email || !password){ auth.error='Remplis les deux champs.'; render(); return; }
+  auth.error='';
+  try{
+    if(auth.mode==='signin'){
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+    } else {
+      const { error } = await supabaseClient.auth.signUp({ email, password });
+      if(error) throw error;
+    }
+    // onAuthStateChange se charge de la suite
+  }catch(e){
+    auth.error = translateAuthError(e.message);
+    render();
+  }
+}
+
+function translateAuthError(msg){
+  if(/invalid login credentials/i.test(msg)) return 'Email ou mot de passe incorrect.';
+  if(/already registered|already exists/i.test(msg)) return 'Un compte existe déjà avec cet email — connecte-toi plutôt.';
+  if(/password.*(least|character)/i.test(msg)) return 'Le mot de passe doit faire au moins 6 caractères.';
+  if(/invalid email/i.test(msg)) return 'Email invalide.';
+  return msg;
+}
+
+async function signOut(){
+  await supabaseClient.auth.signOut();
+}
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  auth.session = session;
+  auth.loading = false;
+  if(session){
+    loadData();
+  } else {
+    state = { decks: [], cards: [] };
+    render();
+  }
+});
 
 /* ---------- Rendering ---------- */
-function render(){
+function renderApp(){
   const app = document.getElementById('app');
   const due = totalDue();
   app.innerHTML = `
@@ -303,23 +489,47 @@ function render(){
         <span>🏠 Tous les paquets</span>
         <span class="count">${state.decks.length}</span>
       </div>
+      <div class="nav-item ${view.page==='tags'||view.page==='tagView'?'active':''}" onclick="goTo('tags')">
+        <span>🏷️ Tags</span>
+        <span class="count">${allTags().length}</span>
+      </div>
       <p class="decks-label">Paquets</p>
       <div class="deck-list">
-        ${state.decks.map(d => {
-          const dueN = dueCards(d.id).length;
-          return `<div class="nav-item ${view.page==='deck'&&view.deckId===d.id?'active':''}" onclick="openDeck('${d.id}')">
-            <span class="deck-name-wrap"><span class="deck-dot" style="background:${d.color}"></span><span class="deck-name-txt">${escapeHtml(d.emoji)} ${escapeHtml(d.name)}</span></span>
-            <span class="count">${cardsForDeck(d.id).length}${dueN>0?`<span class="due-badge">${dueN}</span>`:''}</span>
+        ${allSubjects().map(subject => {
+          const decks = decksBySubject(subject);
+          const collapsed = view.collapsedSubjects.includes(subject);
+          return `
+          <div class="subject-group">
+            <div class="subject-header ${collapsed?'collapsed':''}" onclick="toggleSubject('${escapeAttr(subject)}')">
+              <span><span class="chevron">▾</span> ${escapeHtml(subject)}</span>
+              <span class="count">${decks.length}</span>
+            </div>
+            <div class="subject-decks ${collapsed?'collapsed':''}">
+              ${decks.map(d => {
+                const dueN = dueCards(d.id).length;
+                return `<div class="nav-item ${view.page==='deck'&&view.deckId===d.id?'active':''}" onclick="openDeck('${d.id}')">
+                  <span class="deck-name-wrap"><span class="deck-dot" style="background:${d.color}"></span><span class="deck-name-txt">${escapeHtml(d.emoji)} ${escapeHtml(d.name)}</span></span>
+                  <span class="count">${cardsForDeck(d.id).length}${dueN>0?`<span class="due-badge">${dueN}</span>`:''}</span>
+                </div>`;
+              }).join('')}
+            </div>
           </div>`;
         }).join('')}
       </div>
       <div class="new-deck-form">
-        <input type="text" id="newDeckName" placeholder="Nom du paquet (ex : Chapitre 3)" onkeydown="if(event.key==='Enter')createDeck()">
+        <input type="text" id="newDeckSubject" placeholder="Matière (ex : Biochimie)" list="subjectList">
+        <datalist id="subjectList">${allSubjects().filter(s=>s!=='Sans matière').map(s=>`<option value="${escapeAttr(s)}">`).join('')}</datalist>
+        <input type="text" id="newDeckName" placeholder="Nom du paquet (ex : Ch.01 – Les glucides)" onkeydown="if(event.key==='Enter')createDeck()">
         <button class="btn secondary" style="width:100%" onclick="createDeck()">+ Nouveau paquet</button>
       </div>
       <div class="sidebar-footer">
+        <div class="sync-badge ${syncStatus==='syncing'?'syncing':syncStatus==='error'?'error':''}">
+          <span class="dot"></span>
+          <span>${syncStatus==='syncing'?'Synchronisation…':syncStatus==='error'?'Erreur de synchro':'Synchronisé — '+(auth.session?.user?.email||'')}</span>
+        </div>
         <button class="ghost-btn" onclick="exportData()">⬇️ Exporter en JSON</button>
         <button class="ghost-btn" style="margin-top:6px" onclick="document.getElementById('importFile').click()">⬆️ Importer un JSON</button>
+        <button class="ghost-btn" style="margin-top:6px" onclick="signOut()">🚪 Se déconnecter</button>
       </div>
     </div>
     <div class="main">${renderPage()}</div>
@@ -330,42 +540,96 @@ function renderPage(){
   if(view.page==='dashboard') return renderDashboard();
   if(view.page==='deck') return renderDeckView();
   if(view.page==='study') return renderStudy();
+  if(view.page==='tags') return renderTagsList();
+  if(view.page==='tagView') return renderTagView();
   return '';
+}
+
+function renderTagsList(){
+  const tags = allTags();
+  if(tags.length===0){
+    return `<h1>Tags</h1><p class="subtitle">Regroupe tes cartes par thème, tous paquets confondus.</p>
+    <div class="empty-state">🏷️ Pas encore de tag. Ajoute-en un en créant ou modifiant une carte (ex : mécanisme, dosage, à vérifier).</div>`;
+  }
+  return `<h1>Tags</h1><p class="subtitle">Retrouve tes cartes par thème, quel que soit le paquet.</p>
+  <div class="tag-filter-row">
+    ${tags.map(([t,n])=>`<span class="tag-chip" onclick="openTagView('${escapeHtml(t)}')">${escapeHtml(t)}<span class="n">${n}</span></span>`).join('')}
+  </div>`;
+}
+
+function renderTagView(){
+  const tag = view.tagViewTag;
+  const cards = cardsWithTag(tag);
+  const now = new Date();
+  const due = cards.filter(c => !c.dueDate || new Date(c.dueDate) <= now).length;
+  return `
+  <span class="back-link" onclick="goTo('tags')">← Tous les tags</span>
+  <div class="deck-header">
+    <div>
+      <h1 style="margin-bottom:2px">🏷️ ${escapeHtml(tag)}</h1>
+      <p class="subtitle" style="margin-bottom:0">${cards.length} carte${cards.length!==1?'s':''} · ${due} à revoir · tous paquets confondus</p>
+    </div>
+    <div class="deck-actions">
+      <button class="btn" onclick="startStudyTag('${escapeHtml(tag)}')" ${due===0?'disabled':''}>🔁 Réviser (${due})</button>
+    </div>
+  </div>
+  ${cards.map(c=>{
+    const deck = state.decks.find(d=>d.id===c.deckId);
+    return `<div class="card-row">
+      <div>
+        <span class="deck-badge">${deck?escapeHtml(deck.emoji)+' '+escapeHtml(deck.name):'?'}</span>
+        <span class="front-text">${escapeHtml(c.type==='cloze' ? stripCloze(c.text) : c.front)}</span>
+      </div>
+      <span class="meta">${c.reps>0 ? 'revue '+c.reps+' fois' : '🆕 nouvelle'}</span>
+    </div>`;
+  }).join('')}
+  `;
 }
 
 function renderDashboard(){
   if(state.decks.length===0){
-    return `<h1>Salut ! 👋</h1><p class="subtitle">Crée ton premier paquet dans la barre de gauche — un par chapitre, par exemple.</p>
+    return `<h1>Salut ! 👋</h1><p class="subtitle">Crée ton premier paquet dans la barre de gauche — indique une matière et un nom de chapitre.</p>
     <div class="empty-state">🗂️ Aucun paquet pour l'instant. C'est le moment d'en lancer un !</div>`;
   }
   const due = totalDue();
   return `<h1>Tous les paquets</h1><p class="subtitle">${state.cards.length} carte${state.cards.length!==1?'s':''} au total ${due>0?`· <span style="color:var(--red)">${due} à revoir aujourd'hui 🔥</span>`:'· tout est à jour ✅'}</p>
-  <div class="dash-grid">
-    ${state.decks.map(d=>{
-      const total = cardsForDeck(d.id).length;
-      const dueN = dueCards(d.id).length;
-      return `<div class="dash-card" onclick="openDeck('${d.id}')">
-        <div class="color-bar" style="background:${d.color}22">${d.emoji}</div>
-        <div class="body">
-          <div class="name">${escapeHtml(d.name)}</div>
-          <div class="stats"><span><b>${total}</b> cartes</span><span><b>${dueN}</b> à revoir</span></div>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`;
+  ${allSubjects().map(subject => {
+    const decks = decksBySubject(subject);
+    return `
+    <h2 style="font-size:16px;font-weight:600;margin:24px 0 12px;color:var(--ink-soft)">${escapeHtml(subject)}</h2>
+    <div class="dash-grid">
+      ${decks.map(d=>{
+        const total = cardsForDeck(d.id).length;
+        const dueN = dueCards(d.id).length;
+        return `<div class="dash-card" onclick="openDeck('${d.id}')">
+          <div class="color-bar" style="background:${d.color}22">${d.emoji}</div>
+          <div class="body">
+            <div class="name">${escapeHtml(d.name)}</div>
+            <div class="stats"><span><b>${total}</b> cartes</span><span><b>${dueN}</b> à revoir</span></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('')}
+  `;
 }
 
 function renderDeckView(){
   const deck = state.decks.find(d=>d.id===view.deckId);
   if(!deck) return renderDashboard();
-  const cards = cardsForDeck(deck.id);
+  let cards = cardsForDeck(deck.id);
   const due = dueCards(deck.id).length;
+  const deckTags = {};
+  cards.forEach(c=>(c.tags||[]).forEach(t=>{ deckTags[t]=(deckTags[t]||0)+1; }));
+  const deckTagList = Object.entries(deckTags).sort((a,b)=>b[1]-a[1]);
+  const filteredCards = view.activeTag ? cards.filter(c=>(c.tags||[]).includes(view.activeTag)) : cards;
   return `
   <span class="back-link" onclick="goTo('dashboard')">← Tous les paquets</span>
   <div class="deck-header">
     <div class="deck-title-row">
       <div class="deck-emoji-badge" style="background:${deck.color}33">${deck.emoji}</div>
       <div>
+        <p class="subtitle" style="margin-bottom:2px;text-transform:uppercase;font-size:11.5px;letter-spacing:.03em">${escapeHtml(deck.subject||'Sans matière')}</p>
         <h1 style="margin-bottom:2px">${escapeHtml(deck.name)}</h1>
         <p class="subtitle" style="margin-bottom:0">${cards.length} carte${cards.length!==1?'s':''} · ${due} à revoir aujourd'hui</p>
       </div>
@@ -391,14 +655,24 @@ function renderDeckView(){
         <p class="hint">Entoure chaque élément à retenir avec {{ }} — plusieurs trous possibles dans une même carte.</p>
       </div>
     `}
+    <div class="form-row">
+      <span class="field-label">Tags (optionnel, séparés par des virgules)</span>
+      <input type="text" id="fTags" placeholder="Ex : mécanisme, dosage, à vérifier">
+    </div>
     <button class="btn" onclick="addCard('${deck.id}')">+ Ajouter la carte</button>
   </div>
 
-  ${cards.length===0 ? `<div class="empty-state">🌱 Pas encore de carte ici. Ajoute la première juste au-dessus !</div>` :
-    cards.map(c=>`
+  ${deckTagList.length>0 ? `
+  <div class="tag-filter-row">
+    ${deckTagList.map(([t,n])=>`<span class="tag-chip ${view.activeTag===t?'active':''}" onclick="toggleDeckTag('${escapeHtml(t)}')">${escapeHtml(t)}<span class="n">${n}</span></span>`).join('')}
+  </div>` : ''}
+
+  ${filteredCards.length===0 ? `<div class="empty-state">${cards.length===0 ? '🌱 Pas encore de carte ici. Ajoute la première juste au-dessus !' : 'Aucune carte avec ce tag.'}</div>` :
+    filteredCards.map(c=>`
       <div class="card-row">
         <div>
           <span class="tag">${c.type==='cloze'?'trous':'Q/R'}</span>
+          ${(c.tags||[]).map(t=>`<span class="tag" style="background:#FFF6E0;color:#8A6416;border-color:var(--yellow)">${escapeHtml(t)}</span>`).join('')}
           <span class="front-text">${escapeHtml(c.type==='cloze' ? stripCloze(c.text) : c.front)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:16px">
@@ -418,7 +692,7 @@ function renderStudy(){
       <div class="done-emoji">🎉</div>
       <div class="big">Terminé pour aujourd'hui !</div>
       <p class="subtitle">Tu as revu ${queue.length} carte${queue.length!==1?'s':''}. Retour demain pour la suite.</p>
-      <button class="btn secondary" onclick="openDeck(view.deckId)">Retour au paquet</button>
+      <button class="btn secondary" onclick="stopStudy()">Retour</button>
     </div>`;
   }
   const card = state.cards.find(c=>c.id===queue[view.studyIndex]);
@@ -458,21 +732,29 @@ function renderStudy(){
 }
 
 /* ---------- Actions ---------- */
-function goTo(page){ view.page=page; render(); }
-function openDeck(id){ view.page='deck'; view.deckId=id; view.cardType='basic'; render(); }
-function setCardType(t){ view.cardType=t; render(); }
+function goTo(page){ view.page=page; renderApp(); }
+function openDeck(id){ view.page='deck'; view.deckId=id; view.cardType='basic'; view.activeTag=null; renderApp(); }
+function setCardType(t){ view.cardType=t; renderApp(); }
 
 async function createDeck(){
-  const input = document.getElementById('newDeckName');
-  const name = input.value.trim();
+  const nameInput = document.getElementById('newDeckName');
+  const subjectInput = document.getElementById('newDeckSubject');
+  const name = nameInput.value.trim();
+  const subject = subjectInput.value.trim();
   if(!name) return;
   const usedColors = state.decks.map(d=>d.color);
   const color = DECK_COLORS.find(c=>!usedColors.includes(c)) || pick(DECK_COLORS);
   const emoji = pick(DECK_EMOJIS);
-  state.decks.push({id:uid(), name, color, emoji, createdAt:todayISO()});
+  state.decks.push({id:uid(), name, subject: subject||null, color, emoji, createdAt:todayISO()});
   await saveData();
-  input.value='';
-  render();
+  nameInput.value=''; subjectInput.value='';
+  renderApp();
+}
+
+function toggleSubject(subject){
+  const i = view.collapsedSubjects.indexOf(subject);
+  if(i>=0) view.collapsedSubjects.splice(i,1); else view.collapsedSubjects.push(subject);
+  renderApp();
 }
 
 async function deleteDeck(id){
@@ -495,26 +777,45 @@ async function addCard(deckId){
     if(!text || !text.includes('{{')){ showToast('Ajoute au moins un élément entre {{ }}'); return; }
     card.type='cloze'; card.text=text;
   }
+  const tagsRaw = document.getElementById('fTags').value.trim();
+  card.tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
   state.cards.push(card);
   await saveData();
-  render();
+  renderApp();
   showToast('Carte ajoutée ✨');
+}
+
+function toggleDeckTag(tag){
+  view.activeTag = (view.activeTag===tag) ? null : tag;
+  renderApp();
+}
+function openTagView(tag){
+  view.page='tagView'; view.tagViewTag=tag; renderApp();
 }
 
 async function deleteCard(id){
   state.cards = state.cards.filter(c=>c.id!==id);
   await saveData();
-  render();
+  renderApp();
 }
 
 function startStudy(deckId){
   view.page='study'; view.deckId=deckId;
-  view.studyQueue = dueCards(deckId).map(c=>c.id);
-  view.studyIndex = 0; view.revealed=false;
-  render();
+  let queue = dueCards(deckId);
+  if(view.activeTag) queue = queue.filter(c=>(c.tags||[]).includes(view.activeTag));
+  view.studyQueue = queue.map(c=>c.id);
+  view.studyIndex = 0; view.revealed=false; view.returnTo='deck';
+  renderApp();
 }
-function stopStudy(){ openDeck(view.deckId); }
-function reveal(){ view.revealed=true; render(); }
+function startStudyTag(tag){
+  const now = new Date();
+  const queue = cardsWithTag(tag).filter(c => !c.dueDate || new Date(c.dueDate) <= now);
+  view.page='study'; view.studyQueue = queue.map(c=>c.id);
+  view.studyIndex = 0; view.revealed=false; view.returnTo='tagView'; view.tagViewTag=tag;
+  renderApp();
+}
+function stopStudy(){ view.returnTo==='tagView' ? openTagView(view.tagViewTag) : openDeck(view.deckId); }
+function reveal(){ view.revealed=true; renderApp(); }
 
 async function grade(quality, evt){
   if(quality==='good' || quality==='easy'){
@@ -527,7 +828,7 @@ async function grade(quality, evt){
   await saveData();
   view.studyIndex++;
   view.revealed=false;
-  render();
+  renderApp();
 }
 
 function applySM2(card, quality){
@@ -567,7 +868,7 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
   try{
     const data = JSON.parse(text);
     if(!data.decks || !data.cards) throw new Error('format invalide');
-    data.decks.forEach(d=>{ if(!d.color) d.color=pick(DECK_COLORS); if(!d.emoji) d.emoji=pick(DECK_EMOJIS); });
+    data.decks.forEach(d=>{ if(!d.color) d.color=pick(DECK_COLORS); if(!d.emoji) d.emoji=pick(DECK_EMOJIS); if(d.subject===undefined) d.subject=null; });
     state = data;
     await saveData();
     goTo('dashboard');
@@ -577,8 +878,6 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
   }
   e.target.value = '';
 });
-
-loadData();
 </script>
 </body>
 </html>
