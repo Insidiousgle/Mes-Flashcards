@@ -299,7 +299,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 const STORAGE_KEY = 'feuillets-data';
 let state = { decks: [], cards: [] };
-let view = { page: 'dashboard', deckId: null, studyQueue: [], studyIndex: 0, revealed: false, cardType: 'basic', activeTag: null, tagViewTag: null, collapsedSubjects: [] };
+let view = { page: 'dashboard', deckId: null, studyQueue: [], studyIndex: 0, revealed: false, cardType: 'basic', activeTag: null, tagViewTag: null, collapsedSubjects: [], editingDeckId: null, editingCardId: null };
 let auth = { session: null, mode:'signin', error:'', loading:true };
 let syncStatus = 'idle'; // idle | syncing | error
 
@@ -442,10 +442,15 @@ async function submitAuth(){
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if(error) throw error;
     } else {
-      const { error } = await supabaseClient.auth.signUp({ email, password });
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
       if(error) throw error;
+      if(data && !data.session){
+        auth.error = "Compte créé ! Vérifie ta boîte mail pour confirmer ton adresse, puis reviens te connecter ici.";
+        render();
+        return;
+      }
     }
-    // onAuthStateChange se charge de la suite
+    // onAuthStateChange se charge de la suite si une session a été créée
   }catch(e){
     auth.error = translateAuthError(e.message);
     render();
@@ -623,20 +628,32 @@ function renderDeckView(){
   cards.forEach(c=>(c.tags||[]).forEach(t=>{ deckTags[t]=(deckTags[t]||0)+1; }));
   const deckTagList = Object.entries(deckTags).sort((a,b)=>b[1]-a[1]);
   const filteredCards = view.activeTag ? cards.filter(c=>(c.tags||[]).includes(view.activeTag)) : cards;
+  const isEditingDeck = view.editingDeckId === deck.id;
   return `
   <span class="back-link" onclick="goTo('dashboard')">← Tous les paquets</span>
   <div class="deck-header">
     <div class="deck-title-row">
       <div class="deck-emoji-badge" style="background:${deck.color}33">${deck.emoji}</div>
+      ${isEditingDeck ? `
+      <div style="flex:1;min-width:240px">
+        <input type="text" id="editDeckSubject" value="${escapeAttr(deck.subject||'')}" placeholder="Matière (ex : Biochimie)" style="margin-bottom:8px">
+        <input type="text" id="editDeckName" value="${escapeAttr(deck.name)}" placeholder="Nom du paquet">
+      </div>` : `
       <div>
         <p class="subtitle" style="margin-bottom:2px;text-transform:uppercase;font-size:11.5px;letter-spacing:.03em">${escapeHtml(deck.subject||'Sans matière')}</p>
         <h1 style="margin-bottom:2px">${escapeHtml(deck.name)}</h1>
         <p class="subtitle" style="margin-bottom:0">${cards.length} carte${cards.length!==1?'s':''} · ${due} à revoir aujourd'hui</p>
-      </div>
+      </div>`}
     </div>
     <div class="deck-actions">
-      <button class="btn secondary" onclick="deleteDeck('${deck.id}')">Supprimer</button>
-      <button class="btn" onclick="startStudy('${deck.id}')" ${due===0?'disabled':''}>🔁 Réviser (${due})</button>
+      ${isEditingDeck ? `
+        <button class="btn secondary" onclick="cancelEditDeck()">Annuler</button>
+        <button class="btn" onclick="saveDeckEdit('${deck.id}')">Enregistrer</button>
+      ` : `
+        <button class="btn secondary" onclick="startEditDeck('${deck.id}')">✏️ Modifier</button>
+        <button class="btn secondary" onclick="deleteDeck('${deck.id}')">Supprimer</button>
+        <button class="btn" onclick="startStudy('${deck.id}')" ${due===0?'disabled':''}>🔁 Réviser (${due})</button>
+      `}
     </div>
   </div>
 
@@ -668,7 +685,9 @@ function renderDeckView(){
   </div>` : ''}
 
   ${filteredCards.length===0 ? `<div class="empty-state">${cards.length===0 ? '🌱 Pas encore de carte ici. Ajoute la première juste au-dessus !' : 'Aucune carte avec ce tag.'}</div>` :
-    filteredCards.map(c=>`
+    filteredCards.map(c=>{
+      if(view.editingCardId===c.id) return renderCardEditForm(c);
+      return `
       <div class="card-row">
         <div>
           <span class="tag">${c.type==='cloze'?'trous':'Q/R'}</span>
@@ -677,12 +696,42 @@ function renderDeckView(){
         </div>
         <div style="display:flex;align-items:center;gap:16px">
           <span class="meta">${c.reps>0 ? 'revue '+c.reps+' fois' : '🆕 nouvelle'}</span>
-          <span class="icon-x" onclick="deleteCard('${c.id}')">✕</span>
+          <span class="icon-x" onclick="startEditCard('${c.id}')" title="Modifier">✏️</span>
+          <span class="icon-x" onclick="deleteCard('${c.id}')" title="Supprimer">✕</span>
         </div>
       </div>
-    `).join('')
+    `;
+    }).join('')
   }
   `;
+}
+
+function renderCardEditForm(c){
+  const tagsStr = (c.tags||[]).join(', ');
+  if(c.type==='cloze'){
+    return `
+    <div class="panel" style="margin-bottom:9px">
+      <div class="form-row">
+        <span class="field-label">Texte, avec les éléments à cacher entre double accolades</span>
+        <textarea id="editCloze">${escapeHtml(c.text)}</textarea>
+      </div>
+      <div class="form-row"><span class="field-label">Tags (séparés par des virgules)</span><input type="text" id="editTags" value="${escapeAttr(tagsStr)}"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn secondary" onclick="cancelEditCard()">Annuler</button>
+        <button class="btn" onclick="saveCardEdit('${c.id}')">Enregistrer</button>
+      </div>
+    </div>`;
+  }
+  return `
+    <div class="panel" style="margin-bottom:9px">
+      <div class="form-row"><span class="field-label">Recto (question)</span><textarea id="editFront">${escapeHtml(c.front)}</textarea></div>
+      <div class="form-row"><span class="field-label">Verso (réponse)</span><textarea id="editBack">${escapeHtml(c.back)}</textarea></div>
+      <div class="form-row"><span class="field-label">Tags (séparés par des virgules)</span><input type="text" id="editTags" value="${escapeAttr(tagsStr)}"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn secondary" onclick="cancelEditCard()">Annuler</button>
+        <button class="btn" onclick="saveCardEdit('${c.id}')">Enregistrer</button>
+      </div>
+    </div>`;
 }
 
 function renderStudy(){
@@ -733,7 +782,7 @@ function renderStudy(){
 
 /* ---------- Actions ---------- */
 function goTo(page){ view.page=page; renderApp(); }
-function openDeck(id){ view.page='deck'; view.deckId=id; view.cardType='basic'; view.activeTag=null; renderApp(); }
+function openDeck(id){ view.page='deck'; view.deckId=id; view.cardType='basic'; view.activeTag=null; view.editingDeckId=null; view.editingCardId=null; renderApp(); }
 function setCardType(t){ view.cardType=t; renderApp(); }
 
 async function createDeck(){
@@ -763,6 +812,28 @@ async function deleteDeck(id){
   state.cards = state.cards.filter(c=>c.deckId!==id);
   await saveData();
   goTo('dashboard');
+}
+
+function startEditDeck(deckId){
+  view.editingDeckId = deckId;
+  renderApp();
+}
+function cancelEditDeck(){
+  view.editingDeckId = null;
+  renderApp();
+}
+async function saveDeckEdit(deckId){
+  const deck = state.decks.find(d=>d.id===deckId);
+  if(!deck) return;
+  const name = document.getElementById('editDeckName').value.trim();
+  const subject = document.getElementById('editDeckSubject').value.trim();
+  if(!name){ showToast('Le nom du paquet ne peut pas être vide'); return; }
+  deck.name = name;
+  deck.subject = subject || null;
+  view.editingDeckId = null;
+  await saveData();
+  renderApp();
+  showToast('Paquet mis à jour ✅');
 }
 
 async function addCard(deckId){
@@ -797,6 +868,35 @@ async function deleteCard(id){
   state.cards = state.cards.filter(c=>c.id!==id);
   await saveData();
   renderApp();
+}
+
+function startEditCard(cardId){
+  view.editingCardId = cardId;
+  renderApp();
+}
+function cancelEditCard(){
+  view.editingCardId = null;
+  renderApp();
+}
+async function saveCardEdit(cardId){
+  const card = state.cards.find(c=>c.id===cardId);
+  if(!card) return;
+  if(card.type==='cloze'){
+    const text = document.getElementById('editCloze').value.trim();
+    if(!text || !text.includes('{{')){ showToast('Ajoute au moins un élément entre {{ }}'); return; }
+    card.text = text;
+  } else {
+    const front = document.getElementById('editFront').value.trim();
+    const back = document.getElementById('editBack').value.trim();
+    if(!front || !back){ showToast('Remplis les deux champs 🙂'); return; }
+    card.front = front; card.back = back;
+  }
+  const tagsRaw = document.getElementById('editTags').value.trim();
+  card.tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
+  view.editingCardId = null;
+  await saveData();
+  renderApp();
+  showToast('Carte mise à jour ✅');
 }
 
 function startStudy(deckId){
