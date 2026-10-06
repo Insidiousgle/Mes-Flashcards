@@ -343,10 +343,10 @@ async function saveData(){
   }
   renderApp();
 }
-function showToast(msg){
+function showToast(msg, ms){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 1700);
+  setTimeout(()=>t.classList.remove('show'), ms || 1700);
 }
 function burstConfetti(x, y){
   const layer = document.getElementById('confetti');
@@ -961,20 +961,116 @@ function exportData(){
   URL.revokeObjectURL(url);
   showToast('Sauvegarde téléchargée ⬇️');
 }
+function cardFromImport(c){
+  if(!c || typeof c !== 'object') return null;
+  const str = v => (v===undefined || v===null) ? '' : String(v).trim();
+  const front = str(c.front ?? c.question ?? c.recto ?? c.q);
+  const back  = str(c.back ?? c.answer ?? c.reponse ?? c['réponse'] ?? c.verso ?? c.a);
+  const clozeSrc = str(c.text ?? c.cloze);
+  let tags = c.tags;
+  if(typeof tags === 'string') tags = tags.split(',');
+  tags = Array.isArray(tags) ? tags.map(t=>String(t).trim()).filter(Boolean) : [];
+  if(clozeSrc.includes('{{')) return {type:'cloze', text:clozeSrc, tags};
+  if(front.includes('{{') && !back) return {type:'cloze', text:front, tags};
+  if(front && back) return {type:'basic', front, back, tags};
+  return null;
+}
+
+function importData(data){
+  const res = {decksAdded:0, cardsAdded:0, cardsSkipped:0, lastDeckId:null};
+  const cardKey = c => (c.type==='cloze' ? 'c|'+c.text : 'b|'+c.front).toLowerCase();
+  const newDeckMeta = () => {
+    const used = state.decks.map(d=>d.color);
+    return { color: DECK_COLORS.find(c=>!used.includes(c)) || pick(DECK_COLORS), emoji: pick(DECK_EMOJIS) };
+  };
+
+  // 1) Format natif : fichier créé par le bouton "Exporter en JSON" du site
+  if(data && !Array.isArray(data) && Array.isArray(data.decks) && Array.isArray(data.cards)){
+    data.decks.forEach(d=>{
+      if(!d || !d.id) return;
+      if(!state.decks.some(x=>x.id===d.id)){
+        const meta = newDeckMeta();
+        state.decks.push({id:d.id, name:d.name||'Sans titre', subject:d.subject||null, color:d.color||meta.color, emoji:d.emoji||meta.emoji, createdAt:d.createdAt||todayISO()});
+        res.decksAdded++;
+      }
+      res.lastDeckId = d.id;
+    });
+    data.cards.forEach(c=>{
+      if(!c || !c.id || !state.decks.some(d=>d.id===c.deckId)) return;
+      if(state.cards.some(x=>x.id===c.id)){ res.cardsSkipped++; return; }
+      state.cards.push(c); res.cardsAdded++;
+    });
+    return res;
+  }
+
+  // 2) Format simple : {deck, subject?, cards:[{question, answer, tags}]} ou liste de paquets
+  const decks = [];
+  const add = (name, subject, raw) => decks.push({
+    name: (name===undefined||name===null ? '' : String(name)).trim() || 'Import',
+    subject: (subject===undefined||subject===null ? '' : String(subject)).trim(),
+    cards: (Array.isArray(raw) ? raw : []).map(cardFromImport).filter(Boolean)
+  });
+  if(Array.isArray(data)) add('Import', '', data);
+  else if(data && Array.isArray(data.decks)) data.decks.forEach(d=>add(d.deck||d.name||d.title, d.subject||d.matiere||d['matière']||data.subject||data.matiere, d.cards));
+  else if(data && Array.isArray(data.cards)) add(data.deck||data.name||data.title, data.subject||data.matiere||data['matière'], data.cards);
+  else throw new Error('format non reconnu');
+
+  const findDeck = name => state.decks.find(d=>d.name.toLowerCase()===name.toLowerCase());
+  const needSubject = decks.filter(d=>d.cards.length && !d.subject && !findDeck(d.name));
+  let askedSubject = '';
+  if(needSubject.length){
+    const known = allSubjects().filter(s=>s!=='Sans matière');
+    const label = needSubject.length===1 ? '« '+needSubject[0].name+' »' : 'ces '+needSubject.length+' paquets';
+    askedSubject = (window.prompt(
+      'Dans quelle matière ranger '+label+' ?'
+      + (known.length ? '\nMatières existantes : '+known.join(', ') : '')
+      + '\n(Laisse vide pour ne pas en mettre — tu pourras la modifier ensuite.)', '') || '').trim();
+  }
+
+  decks.forEach(d=>{
+    if(!d.cards.length) return;
+    let deck = findDeck(d.name);
+    if(!deck){
+      const meta = newDeckMeta();
+      deck = {id:uid(), name:d.name, subject:(d.subject||askedSubject)||null, color:meta.color, emoji:meta.emoji, createdAt:todayISO()};
+      state.decks.push(deck); res.decksAdded++;
+    }
+    const existing = new Set(state.cards.filter(c=>c.deckId===deck.id).map(cardKey));
+    d.cards.forEach(c=>{
+      const k = cardKey(c);
+      if(existing.has(k)){ res.cardsSkipped++; return; }
+      existing.add(k);
+      state.cards.push(Object.assign({id:uid(), deckId:deck.id, ease:2.5, interval:0, reps:0, dueDate:null}, c));
+      res.cardsAdded++;
+    });
+    res.lastDeckId = deck.id;
+  });
+  return res;
+}
+
 document.getElementById('importFile').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
-  const text = await file.text();
+  let data;
   try{
-    const data = JSON.parse(text);
-    if(!data.decks || !data.cards) throw new Error('format invalide');
-    data.decks.forEach(d=>{ if(!d.color) d.color=pick(DECK_COLORS); if(!d.emoji) d.emoji=pick(DECK_EMOJIS); if(d.subject===undefined) d.subject=null; });
-    state = data;
-    await saveData();
-    goTo('dashboard');
-    showToast('Import réussi ✅');
+    data = JSON.parse(await file.text());
   }catch(err){
-    showToast('Fichier invalide');
+    showToast("Fichier illisible : ce n'est pas un JSON valide", 3500);
+    e.target.value = ''; return;
+  }
+  try{
+    const res = importData(data);
+    if(res.cardsAdded===0 && res.decksAdded===0){
+      showToast(res.cardsSkipped>0 ? 'Rien de nouveau : ces cartes sont déjà là' : 'Aucune carte reconnue dans ce fichier', 3500);
+    } else {
+      await saveData();
+      if(res.lastDeckId) openDeck(res.lastDeckId); else goTo('dashboard');
+      showToast(res.cardsAdded+' carte'+(res.cardsAdded>1?'s':'')+' importée'+(res.cardsAdded>1?'s':'')+' ✅'
+        + (res.cardsSkipped>0 ? ' ('+res.cardsSkipped+' déjà présente'+(res.cardsSkipped>1?'s':'')+' ignorée'+(res.cardsSkipped>1?'s':'')+')' : ''), 4000);
+    }
+  }catch(err){
+    console.error(err);
+    showToast('Format non reconnu : il faut une liste « cards » avec question et réponse', 4000);
   }
   e.target.value = '';
 });
